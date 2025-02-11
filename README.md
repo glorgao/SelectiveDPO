@@ -12,6 +12,10 @@ The significant performance gain suggests that difficult examples, characterized
 
 ## Reproduce SelectiveDPO
 To reproduce the benchmarking results from our paper, please follow the steps below.
+#### Step 0: Preparing the computational environment
+- Hardware Requirements. The released code is designed to run on a node with 8 H100 GPUs. However, it is possible to reproduce the results with 4 GPUs (80GB memory each). If using fewer GPUs, make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps accordingly`.
+
+- Software Requirements: We provide a requirements file: `selective-dpo-requirements.yaml` for easy setup.
 
 
 #### Step 1: Scoring the example difficulty by validation loss (Optional)
