@@ -1,0 +1,56 @@
+# Model arguments
+model_name_or_path: glorgao/Qwen2.5-7B-SFT
+torch_dtype: bfloat16
+attn_implementation: flash_attention_2
+
+# LoRA arguments
+use_peft: true
+load_in_4bit: false
+lora_r: 16
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+- q_proj
+- k_proj
+- v_proj
+- o_proj
+- gate_proj
+- up_proj
+- down_proj
+
+# Data training arguments
+# For definitions, see: src/h4/training/config.py
+chat_template: "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+dataset_mixer:
+  HuggingFaceH4/ultrafeedback_binarized: 1.0
+dataset_splits:
+- train_prefs
+- test_prefs
+preprocessing_num_workers: 24
+
+# DPOTrainer arguments
+bf16: true
+beta: 0.01
+do_eval: true
+evaluation_strategy: steps
+eval_steps: 20
+gradient_accumulation_steps: 8
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: False
+hub_model_id: qwen-2.5-7b-uf
+learning_rate: 6.0e-6
+log_level: info
+logging_steps: 10
+lr_scheduler_type: cosine
+max_length: 1024
+max_prompt_length: 512
+num_train_epochs: 1
+optim: paged_adamw_32bit
+output_dir: ./output/qwen-2.5-7b-uf-seed43
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 8
+push_to_hub: false
+save_strategy: "no"
+seed: 43
+warmup_ratio: 0.1
