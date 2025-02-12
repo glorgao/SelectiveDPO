@@ -1,24 +1,18 @@
 ## Introduction to SelectiveDPO
 
-<ins>*Preference data vary in difficulty, and overly difficult examples hinder alignment, by exceeding the model's capacity.*</ins>
+This repository contains the code and released models for our paper *Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples*. The proposed algorithm, SelectiveDPO, selectively trains on preference examples within the model's capacity. It improves alignment performance by 9-16% in win rates on the AlpacaEval 2 benchmark compared to the DPO baseline, suppressing a series of DPO variants with different algorithmic adjustments. For the released model trained with SelectiveDPO, please visit this [collection page](https://huggingface.co/collections/glorgao/selectivedpo-676966c5bf01f8eb91a8fb85).
 
-This is the key insight we want to convey. Based on this principle, we propose SelectiveDPO, a DPO-like trainer that selectively trains on preference examples within the model's capacity. It improves alignment performance by 9-16% in win rates on the AlpacaEval 2 benchmark compared to the DPO baseline, suppressing a series of DPO variants with different algorithmic adjustments.
-
-The significant performance gain suggests that difficult examples, characterized by high validation loss, not only contribute little to alignment but may actually be detrimental. For a more detailed investigation and evaluation, please refer to our paper:
-
-
-*Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples*, 
-
+![](selective-dpo-illustration.jpg)
 
 ## Reproduce SelectiveDPO
 To reproduce the benchmarking results from our paper, please follow the steps below.
-#### Step 0: Preparing the computational environment
-- Hardware Requirements. The released code is designed to run on a node with 8 H100 GPUs. However, it is possible to reproduce the results with 4 GPUs (80GB memory each). If using fewer GPUs, make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps accordingly`.
+#### Step 0: Preparing the environment
+- Hardware. The released code is designed to run on a node with 8 H100 GPUs. However, it is possible to reproduce the results with 4 GPUs (80GB memory each). If using fewer GPUs, make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps accordingly`.
 
-- Software Requirements: We provide a requirements file: `selective-dpo-requirements.yaml` for easy setup.
+- Software. Our codebase is built on the [alignment-handbook repo](https://github.com/huggingface/alignment-handbook). We provide a requirements file: `selective-dpo-requirements.yaml` for easy setup. 
 
 
-#### Step 1: Scoring the example difficulty by validation loss (Optional)
+#### Step 1: Score the example difficulty by validation loss (Optional)
 ```bash
 cd curriculum-lens 
 bash curriculum-lens-qwen-2.5.sh
@@ -33,18 +27,17 @@ You may need to modify the Bash and Python scripts to fit your own computational
 
 
 
-#### Step 2: Rerun DPOTrainer on the selected partition of easy examples.
+#### Step 2: Runn SelectiveDPOTrainer.
 ```bash
 cd selective-dpo 
 bash run-selectivedpo-uf.sh
 ```
 You may need to modify the Bash script to fit your computational environment.
 
-
 Our training scripts are straightforward:
 
 - `script.run_selective_dpo.py` applies the chat template, selects the easiest 50% of training examples (a tunable hyperparameter) from the ultrafeedback_binarized dataset, and runs SelectiveDPOTrainer.
 
-- `script.selective_dpo_trainer.py` implements SelectiveDPOTrainer, where the only meaningful modification is replacing *RandomSampler* with *SequentialSampler* to fully utilize the computed difficulty measure.
+- `script.selective_dpo_trainer.py` implements SelectiveDPOTrainer, where the only meaningful modification is replacing *RandomSampler* with *SequentialSampler* to query examples from easy to difficut.
 
-We have included four precomputed `validation loss` records in the /curricula folder. If you want to use your own curriculum, please rename your CSV file accordingly.
+We have included four precomputed `validation loss` records for four models (qwen2.5-7b-sft, mistral-7b-sft, llama3-8b-sft, and gemma2-9b-sft), in the `/curricula` folder. If you want to use your own curriculum, please rename your CSV file accordingly.
