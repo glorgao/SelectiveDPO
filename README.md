@@ -1,6 +1,6 @@
 ## Introduction to SelectiveDPO
 
-This repository contains the code and released models for our paper *Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples*. The proposed algorithm, SelectiveDPO, selectively trains on preference examples within the model's capacity. It improves alignment performance by 9-16% in win rates on the AlpacaEval 2 benchmark compared to the DPO baseline, suppressing a series of DPO variants with different algorithmic adjustments. For the released model trained with SelectiveDPO, please visit this [collection page](https://huggingface.co/collections/glorgao/selectivedpo-676966c5bf01f8eb91a8fb85).
+This repository contains the code and released models for our paper [Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples](https://arxiv.org/pdf/2502.09650). The proposed algorithm, SelectiveDPO, selectively trains on preference examples within the model's capacity. It improves alignment performance by 9-16% in win rates on the AlpacaEval 2 benchmark compared to the DPO baseline, suppressing a series of DPO variants with different algorithmic adjustments. For the released model trained with SelectiveDPO, please visit this [collection page](https://huggingface.co/collections/glorgao/selectivedpo-676966c5bf01f8eb91a8fb85).
 
 ![](selective-dpo-illustration.jpg)
 
@@ -27,7 +27,7 @@ You may need to modify the Bash and Python scripts to fit your own computational
 
 
 
-#### Step 2: Runn SelectiveDPOTrainer.
+#### Step 2: Run SelectiveDPOTrainer.
 ```bash
 cd selective-dpo 
 bash run-selectivedpo-uf.sh
