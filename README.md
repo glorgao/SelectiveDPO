@@ -7,10 +7,31 @@ This repository contains the code and released models for our paper [Principled 
 ## Reproduce SelectiveDPO
 To reproduce the benchmarking results from our paper, please follow the steps below.
 #### Step 0: Preparing the environment
-- Hardware. The released code is designed to run on a node with 8 H100 GPUs. However, it is possible to reproduce the results with 4 GPUs (80GB memory each). If using fewer GPUs, make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps accordingly`.
+- Hardware. The released code is designed to run on a node with 8 H100 GPUs. However, it is possible to reproduce the results with 4 GPUs (80GB memory each). If using fewer GPUs, make sure to adjust `per_device_train_batch_size` and `gradient_accumulation_steps` accordingly.
 
-- Software. Our codebase is built on the [alignment-handbook repo](https://github.com/huggingface/alignment-handbook). We provide a requirements file: `selective-dpo-requirements.yaml` for easy setup. 
+- Software. Our codebase is built on the [huggingface/alignment-handbook](https://github.com/huggingface/alignment-handbook). Here are the steps to install the environment.
 
+```bash
+conda create -n sdpo python=3.10
+conda activate sdpo
+
+# install the pytorch v2.2.2 at https://pytorch.org/get-started/locally/. For example, for linux
+conda install pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 pytorch-cuda=12.1 -c pytorch -c nvidia
+
+# install the specified version of transformers, peft, trl, and deepspeed
+pip install transformers==4.42.4 peft==0.13.2 trl==0.11.4 deepspeed==0.14.4 
+
+# Install alignment-handbook
+git clone https://github.com/huggingface/alignment-handbook.git
+cd ./alignment-handbook/
+python -m pip install .
+ 
+# install flash-attn for fast inference 
+pip install flash-attn --no-build-isolation
+
+# Other dependencies
+pip install wandb
+```
 
 #### Step 1: Score the example difficulty by validation loss (Optional)
 ```bash

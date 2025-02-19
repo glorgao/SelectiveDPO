@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os 
-os.environ["HF_DATASETS_OFFLINE"] = "1"
 import hashlib
+
 import logging
 import random
 import sys
@@ -44,9 +44,17 @@ from alignment.data import maybe_insert_system_message, is_openai_format
 from peft import PeftConfig, PeftModel
 from dpo_diagnostician import DPODiagnostician
 from typing import Optional, Literal, Dict, List, Union, Tuple
+from dataclasses import dataclass, field
 
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class CurrArgs:
+    curr_split: str = field(
+        default="first",
+        metadata={"help": "Which half of the dataset to use for training ('first' or 'second')"}
+    )
 
 def generate_prompt_id(prompt_text):
     # Convert the prompt text to bytes
@@ -113,10 +121,10 @@ def apply_chat_template(
 
             example["text_prompt"] = tokenizer.apply_chat_template(prompt_messages, tokenize=False)
             example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
-            if example["text_chosen"].startswith(tokenizer.bos_token):
+            if tokenizer.bos_token and example["text_chosen"].startswith(tokenizer.bos_token):
                 example["text_chosen"] = example["text_chosen"][len(tokenizer.bos_token):]
             example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
-            if example["text_rejected"].startswith(tokenizer.bos_token):
+            if tokenizer.bos_token and example["text_rejected"].startswith(tokenizer.bos_token):
                 example["text_rejected"] = example["text_rejected"][len(tokenizer.bos_token):]
         else:
             raise ValueError(
@@ -131,8 +139,13 @@ def apply_chat_template(
 
 
 def main():
-    parser = H4ArgumentParser((ModelArguments, DataArguments, DPOConfig))
-    model_args, data_args, training_args = parser.parse()
+    
+    parser = H4ArgumentParser((ModelArguments, DataArguments, DPOConfig, CurrArgs))
+    model_args, data_args, training_args, curr_args = parser.parse()
+
+    # run_name for wandb
+    training_args.run_name = f"{model_args.model_name_or_path.split('/')[-1]}-{training_args.seed}-{curr_args.curr_split}" 
+    training_args.output_dir = os.path.join(training_args.output_dir, str(training_args.seed)+curr_args.curr_split)
 
     #######
     # Setup
@@ -186,7 +199,7 @@ def main():
             )
     else:
         column_names.remove("prompt_id")
-
+    
     #####################################
     # Load tokenizer and process datasets
     #####################################
@@ -228,8 +241,14 @@ def main():
     indices = np.random.permutation(num_samples)
 
     # Split the indices into two halves
-    train_indices = indices[:num_samples // 2]
-    eval_indices = indices[num_samples // 2:]
+    if curr_args.curr_split == "first":
+        eval_indices  = indices[:num_samples // 2]
+        train_indices = indices[num_samples // 2:]
+    elif curr_args.curr_split == "second":
+        eval_indices  = indices[num_samples // 2:]
+        train_indices = indices[:num_samples // 2]
+    else:
+        raise ValueError(f"Invalid split: {split}")
 
     # Use the split indices to select the appropriate subsets
     raw_datasets["test"] = raw_datasets["train"].select(eval_indices)

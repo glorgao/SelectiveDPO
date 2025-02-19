@@ -1,5 +1,5 @@
 # Model arguments
-model_name_or_path: HuggingFaceH4/mistral-7b-sft-beta
+model_name_or_path: princeton-nlp/Llama-3-Base-8B-SFT
 torch_dtype: bfloat16
 attn_implementation: flash_attention_2
 
@@ -33,12 +33,12 @@ beta: 0.01
 do_eval: true
 evaluation_strategy: steps
 eval_steps: 10
-gradient_accumulation_steps: 2
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: False
-hub_model_id: mistral-7b-argilla
-learning_rate: 2.0e-4
+hub_model_id: llama-3-8b-argilla
+learning_rate: 3.0e-4
 log_level: info
 logging_steps: 1
 lr_scheduler_type: cosine
@@ -46,10 +46,9 @@ max_length: 1024
 max_prompt_length: 512
 num_train_epochs: 1
 optim: paged_adamw_32bit
-output_dir: ./output/mistral-7b-argilla-seed42
-per_device_train_batch_size: 4
-per_device_eval_batch_size: 12
+output_dir: ./output/llama-3-8b-argilla # seed and curr_split will be added to the output_dir
+per_device_train_batch_size: 2
+per_device_eval_batch_size: 4
 push_to_hub: false
 save_strategy: "no"
-seed: 42
 warmup_ratio: 0.1

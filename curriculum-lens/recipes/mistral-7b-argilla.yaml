@@ -46,10 +46,9 @@ max_length: 1024
 max_prompt_length: 512
 num_train_epochs: 1
 optim: paged_adamw_32bit
-output_dir: ./output/mistral-7b-argilla-seed41
+output_dir: ./output/mistral-7b-argilla # seed and curr_split will be added to the output_dir
 per_device_train_batch_size: 4
 per_device_eval_batch_size: 12
 push_to_hub: false
 save_strategy: "no"
-seed: 41
 warmup_ratio: 0.1
