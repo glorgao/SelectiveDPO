@@ -37,7 +37,7 @@ pip install wandb
 ```bash
 cd curriculum-lens 
 bash curriculum-lens-qwen-2.5.sh
-python make-curricula-uf.py 
+python make_curricula.py 
 ```
 You may need to modify the Bash and Python scripts to fit your own computational environment.
 
