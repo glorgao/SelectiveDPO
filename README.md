@@ -27,7 +27,7 @@ cd ./alignment-handbook/
 python -m pip install .
  
 # install flash-attn for fast inference 
-pip install flash-attn --no-build-isolation
+pip install flash-attn==2.6.3 --no-build-isolation
 
 # Other dependencies
 pip install wandb
