@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Overly difficult preference examples hinder alignment by exceeding the model's capacity. Selective DPO filters them out and beats DPO by 9-16 points on AlpacaEval 2. ICML 2025.">
+<meta property="og:title" content="Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples">
+<meta property="og:description" content="Overly difficult preference examples hinder alignment by exceeding the model's capacity. Selective DPO filters them out and beats DPO by 9-16 points on AlpacaEval 2. ICML 2025.">
+<meta property="og:type" content="article">
+<link rel="alternate" type="text/plain" href="llms.txt" title="Plain-text summary for language models">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "ScholarlyArticle", "headline": "Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples", "alternativeHeadline": "Selective DPO", "author": [{"@type": "Person", "name": "Chengqian Gao"}, {"@type": "Person", "name": "Haonan Li"}, {"@type": "Person", "name": "Liu Liu"}, {"@type": "Person", "name": "Zeke Xie"}, {"@type": "Person", "name": "Peilin Zhao"}, {"@type": "Person", "name": "Zhiqiang Xu"}], "datePublished": "2025", "isPartOf": {"@type": "Event", "name": "ICML 2025"}, "abstract": "Overly difficult preference examples hinder DPO alignment by exceeding the model's capacity. Selective DPO filters them out using validation loss and improves AlpacaEval 2 win rate by 9-16 points over DPO.", "keywords": ["preference alignment", "DPO", "data selection", "example difficulty", "LLM"], "url": "https://arxiv.org/abs/2502.09650", "sameAs": ["https://arxiv.org/abs/2502.09650", "https://github.com/glorgao/SelectiveDPO", "https://huggingface.co/collections/glorgao/selectivedpo"]}</script>
+<title>Selective DPO · Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: Nerfies single column, 960px max; findings numbered because the paper argues them in sequence. Tokens from the Paper Page design system. */
+:root {
+  --surface:#ffffff; --surface-muted:#f5f5f5; --border:#dbdbdb;
+  --ink:#363636; --ink-muted:#666666; --accent:#1e40af;
+  --accent-deep:#1e3a8a; --on-accent-deep:#ffffff;
+  --tint-ours:#d0e7ff; --tint-head:#e4eefb;
+  --button:#363636; --on-button:#ffffff;
+  --figure-ground:#ffffff;
+  --data-1:#1f77b4; --data-2:#ff7f0e; --data-3:#2ca02c;
+  --font-title:"Google Sans","Noto Sans",system-ui,sans-serif;
+  --font-body:"Noto Sans",system-ui,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-12:48px;
+  --radius-sm:4px; --radius-md:6px; --radius-pill:9999px;
+  --content-width:960px; --prose-width:68ch;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --surface:#121417; --surface-muted:#1c1f24; --border:#33373e;
+  --ink:#e6e8eb; --ink-muted:#a3a8b0; --accent:#8fb0ff;
+  --accent-deep:#3a5bc7; --tint-ours:#1d3354; --tint-head:#19263a;
+  --button:#e6e8eb; --on-button:#121417; color-scheme:dark; } }
+:root[data-theme="dark"] {
+  --surface:#121417; --surface-muted:#1c1f24; --border:#33373e;
+  --ink:#e6e8eb; --ink-muted:#a3a8b0; --accent:#8fb0ff;
+  --accent-deep:#3a5bc7; --tint-ours:#1d3354; --tint-head:#19263a;
+  --button:#e6e8eb; --on-button:#121417; color-scheme:dark; }
+
+[hidden] { display:none !important; }
+section > *, .sub > *, .prose > *, figure > * { min-width:0; }
+body { background:var(--surface); color:var(--ink); font-family:var(--font-body); font-size:16px; line-height:26px; margin:0; }
+.wrap { max-width:var(--content-width); margin:0 auto; padding-inline:var(--space-6); }
+@media (max-width:600px){ .wrap { padding-inline:var(--space-4); } }
+a { color:var(--accent); text-underline-offset:2px; }
+a:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+h1,h2,h3 { font-family:var(--font-title); font-weight:600; text-wrap:balance; margin:0; }
+p { margin:0; }
+.prose { display:grid; gap:var(--space-3); }
+@media (min-width:600px){ .prose p, figcaption, .tier-note { text-align:justify; hyphens:auto; } }
+.ph { background:var(--tint-head); color:var(--accent); font-weight:600; border-radius:var(--radius-sm); padding:0 4px; }
+.ours-name { color:var(--accent); font-weight:600; }
+
+/* hero */
+.hero { padding-block:var(--space-12) var(--space-6); text-align:center; display:grid; gap:var(--space-4); justify-items:center; }
+.hero h1 { font-size:40px; line-height:48px; }
+@media (max-width:600px){ .hero h1 { font-size:30px; line-height:38px; } }
+.authors { font-size:18px; line-height:28px; }
+.authors sup, .affil sup { color:var(--ink-muted); }
+.affil { color:var(--ink-muted); font-size:15px; line-height:22px; }
+.venue { color:var(--ink-muted); font-weight:600; letter-spacing:.06em; text-transform:uppercase; font-size:13px; line-height:20px; }
+.links { display:flex; flex-wrap:wrap; gap:var(--space-2); justify-content:center; padding-top:var(--space-2); }
+.links a { background:var(--button); color:var(--on-button); text-decoration:none; border-radius:var(--radius-pill); padding:7px 20px; font-size:15px; line-height:22px; font-weight:600; }
+
+/* sections */
+section { padding-block:var(--space-12); border-top:1px solid var(--border); display:grid; gap:var(--space-6); }
+section.teaser { border-top:0; padding-top:var(--space-6); }
+.eyebrow { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); font-weight:600; margin-bottom:var(--space-2); }
+h2 { font-size:28px; line-height:36px; }
+h3 { font-size:20px; line-height:28px; }
+.sub { display:grid; gap:var(--space-4); }
+.question { font-family:var(--font-title); font-size:24px; line-height:34px; font-weight:600; text-align:center; margin:0; }
+.claims { margin:0; padding-left:1.4em; display:grid; gap:var(--space-1); }
+
+/* figures: plots keep a white plate in both themes, since they are drawn on white */
+figure { margin:0; display:grid; gap:var(--space-2); }
+figure .plate { background:var(--figure-ground); border-radius:var(--radius-sm); padding:var(--space-2); display:flex; justify-content:center; }
+figure img { display:block; width:100%; height:auto; }
+figure.narrow .plate img { max-width:560px; }
+figure.mid .plate img { max-width:720px; }
+figcaption { font-size:16px; line-height:26px; color:var(--ink); }
+figcaption b { font-weight:600; }
+.math { font-family:var(--font-mono); font-size:14px; background:var(--surface-muted); border-radius:var(--radius-sm); padding:var(--space-2) var(--space-4); overflow-x:auto; white-space:nowrap; }
+
+/* tabs */
+.tabs { display:flex; flex-wrap:wrap; gap:var(--space-2); justify-content:center; }
+.tabs button { font:inherit; font-size:14px; line-height:20px; background:none; color:var(--ink); border:1px solid var(--border); border-radius:var(--radius-pill); padding:5px 14px; cursor:pointer; }
+.tabs button[aria-selected="true"] { background:var(--button); color:var(--on-button); border-color:var(--button); }
+.legend { display:flex; flex-wrap:wrap; justify-content:center; gap:var(--space-2) var(--space-4); font-size:13px; line-height:20px; color:var(--ink-muted); }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.legend i { width:18px; height:0; border-top:3px dashed; display:inline-block; }
+
+/* method steps */
+.steps { list-style:none; margin:0; padding:0; display:grid; gap:var(--space-4); }
+.steps li { display:grid; grid-template-columns:28px 1fr; gap:var(--space-3); }
+.steps .n { width:28px; height:28px; border-radius:var(--radius-pill); background:var(--accent-deep); color:var(--on-accent-deep); display:grid; place-items:center; font-weight:700; font-size:14px; line-height:1; }
+.steps b { display:block; }
+
+/* case studies */
+.cases { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-3); }
+@media (max-width:760px){ .cases { grid-template-columns:1fr; } }
+.case { border:1px solid var(--border); border-radius:var(--radius-sm); padding:var(--space-3) var(--space-4); display:grid; gap:var(--space-2); align-content:start; min-width:0; }
+.case h4 { margin:0; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); font-weight:700; }
+.case p { font-size:14px; line-height:21px; overflow-wrap:anywhere; }
+.case.prompt { background:var(--surface-muted); border-color:var(--surface-muted); }
+.tier-note { font-size:16px; line-height:26px; }
+
+/* results table */
+.table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-sm); }
+table { border-collapse:collapse; width:100%; min-width:620px; font-variant-numeric:tabular-nums; font-size:15px; line-height:22px; }
+th, td { padding:var(--space-2) var(--space-4); text-align:center; white-space:nowrap; }
+th:first-child, td:first-child { text-align:left; }
+thead th { background:var(--tint-head); font-weight:600; }
+thead tr:first-child th { border-bottom:1px solid var(--border); }
+tbody tr + tr td { border-top:1px solid var(--border); }
+tr.ours td { background:var(--tint-ours); }
+td small { color:var(--ink-muted); font-size:12px; }
+td u { text-decoration-thickness:1px; text-underline-offset:3px; }
+.note { font-size:14px; line-height:21px; color:var(--ink-muted); text-align:center; }
+.case-panel { display:grid; gap:var(--space-3); }
+.case-note { text-align:center; font-style:italic; color:var(--ink-muted); }
+#hinders > .prose { margin-top:var(--space-2); }
+
+/* bibtex */
+.bib { position:relative; }
+.bib pre { margin:0; background:var(--surface-muted); border-radius:var(--radius-sm); padding:var(--space-4); overflow-x:auto; font-family:var(--font-mono); font-size:13px; line-height:20px; }
+.bib button { position:absolute; top:var(--space-2); right:var(--space-2); font:inherit; font-size:13px; background:var(--button); color:var(--on-button); border:0; border-radius:var(--radius-pill); padding:3px 12px; cursor:pointer; }
+footer { color:var(--ink-muted); font-size:13px; line-height:20px; padding-block:var(--space-6); border-top:1px solid var(--border); }
+@media (prefers-reduced-motion: reduce){ * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="venue">ICML 2025</div>
+    <h1>Principled Data Selection for Alignment: The Hidden Risks of Difficult Examples</h1>
+    <div class="authors">
+      Chengqian Gao<sup>1</sup>, Haonan Li<sup>1</sup>, Liu Liu<sup>2</sup>, Zeke Xie<sup>3</sup>, Peilin Zhao<sup>2,4</sup>, Zhiqiang Xu<sup>1</sup>
+    </div>
+    <div class="affil"><sup>1</sup>MBZUAI &nbsp; <sup>2</sup>Tencent &nbsp; <sup>3</sup>HKUST (Guangzhou) &nbsp; <sup>4</sup>SJTU</div>
+    <nav class="links" aria-label="Paper links">
+      <a href="https://arxiv.org/abs/2502.09650">arXiv</a>
+      <a href="https://github.com/glorgao/SelectiveDPO">Code</a>
+      <a href="https://huggingface.co/collections/glorgao/selectivedpo">Models</a>
+      <a href="#bibtex">BibTeX</a>
+    </nav>
+  </header>
+
+  <section class="teaser" id="teaser">
+    <p class="question">Small models fail on hard problems at inference time. Do hard examples also hurt them at training time?</p>
+    <figure class="narrow">
+        <div class="plate"><img src="static/images/overall-performance.svg" alt="Line chart of WR′ against the percentage of training data used. Training on examples sorted from easy to difficult peaks near 0.30 at 50% of the data, then falls to about 0.18 at 100%. Random ordering rises slowly to about 0.20." width="420" height="290"></div>
+        <figcaption><b>Yes.</b> With examples sorted from easy to difficult, DPO keeps improving through the first half of the data, then degrades once the difficult half arrives, ending below standard DPO. Four SFT models on UltraFeedback-binarized.</figcaption>
+      </figure>
+  </section>
+
+  <section id="abstract">
+    <h2>Abstract</h2>
+    <div class="prose">
+      <p>The alignment of large language models (LLMs) often assumes that using more clean data yields better outcomes, overlooking the match between model capacity and example difficulty. Challenging this, we propose a new principle: <i>“Preference data vary in difficulty, and overly difficult examples hinder alignment, by exceeding the model's capacity.”</i> Through systematic experimentation, we validate this principle with three key findings: (1) preference examples vary in difficulty, as evidenced by consistent learning orders across alignment runs; (2) overly difficult examples significantly degrade performance across four LLMs and two datasets; and (3) the capacity of a model dictates its threshold for handling difficult examples, underscoring a critical relationship between data selection and model capacity. Building on this principle, we introduce <i>Selective DPO</i>, which filters out overly difficult examples. This simple adjustment improves alignment performance by 9–16% in win rates on the AlpacaEval 2 benchmark compared to the DPO baseline, surpassing a series of DPO variants with different algorithmic adjustments. These results together illuminate the importance of aligning data difficulty with model capacity, offering a transformative perspective for improving alignment strategies in LLMs.</p>
+    </div>
+  </section>
+
+  <section id="difficulty">
+    <div><div class="eyebrow">Finding 1</div><h2>Models learn examples in the same order across runs</h2></div>
+    <figure class="narrow">
+        <div class="plate"><img src="static/images/learning-order.png" alt="Heatmap of learned step for 300 test examples (rows) across 40 runs (columns) for Gemma-2-9B-it, Llama-3-8B-Instruct, Mistral-7B-SFT and Gemma-2-2B-it. Rows are sorted by average learned step; the dark late-learned band sits in the same rows for every model." width="925" height="814"></div>
+        <figcaption>We align four models (Gemma-2-2B, Gemma-2-9B, Llama-3-8B, Mistral-7B) with DPO, each on ten different subsets of UltraFeedback-binarized, and record when each of 300 held-out examples is learned: the step after which the implicit reward model keeps preferring the chosen response. Rows are examples sorted by this learned step; columns are the 40 runs; darker means later. The rows line up across all runs, so the same examples are hard for every model and data subset: difficulty is a property of the example. Tracking learned steps is costly, so the rest of the page measures difficulty by <b>validation loss</b>, the DPO loss of an example under reference models that never trained on it.</figcaption>
+      </figure>
+  </section>
+
+  <section id="hinders">
+    <div><div class="eyebrow">Finding 2</div><h2>Overly difficult examples hinder alignment</h2></div>
+    <figure>
+      <div class="tabs" role="tablist" aria-label="Dataset">
+        <button type="button" role="tab" id="tab-uf" aria-controls="panel-uf" aria-selected="true">UltraFeedback-binarized</button>
+        <button type="button" role="tab" id="tab-ar" aria-controls="panel-ar" aria-selected="false">Argilla-7k</button>
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span><i style="color:var(--data-1)"></i>Random order (DPO)</span>
+        <span><i style="color:var(--data-2)"></i>Easy to difficult</span>
+        <span><i style="color:var(--data-3)"></i>Easiest subset, shuffled</span>
+      </div>
+      <div class="plate" role="tabpanel" id="panel-uf" aria-labelledby="tab-uf"><img src="static/images/base-model-uf-armo.svg" alt="Four panels, one per model, on UltraFeedback-binarized. WR′ against data percentage: the easy-first curves peak around 50% of the data well above random ordering, then drop as harder data is added." width="936" height="206"></div>
+      <div class="plate" role="tabpanel" id="panel-ar" aria-labelledby="tab-ar" hidden><img src="static/images/base-model-argilla-armo.svg" alt="Four panels, one per model, on Argilla-7k. The easy-first curves rise above random ordering and peak around 60–80% of the data." width="936" height="209"></div>
+      <figcaption><b>Dropping the hardest examples helps all four models on both datasets.</b> We align Mistral-7B, Qwen-2.5-7B, Llama-3-8B and Gemma-2-9B SFT models with one recipe and change only the data: random order (standard DPO), easy to difficult by validation loss, or the easiest 50–60% in random order. Both easy-data runs beat standard DPO everywhere and score about the same, so the gain comes from leaving the hardest examples out, not from the order. Win rate is WR′ against GPT-4-Turbo on AlpacaEval 2 prompts, judged by ArmoRM; bars show the validation loss of the data added at each step.</figcaption>
+    </figure>
+    <div class="prose"><p><b>So what makes an example hard?</b> We pick examples from Mistral-7B-SFT on Argilla-7k at three validation-loss quantiles. Easy examples have clean labels and simple tasks. Around the 0.6 quantile, where win rate starts to fall, labels are still correct but the tasks need skills the model lacks, such as exact arithmetic or translation into a low-resource language. The hardest examples are often mislabeled.</p></div>
+      <div class="tabs" role="tablist" aria-label="Difficulty level">
+        <button type="button" role="tab" id="tab-easy" aria-controls="case-easy" aria-selected="true">Easy · quantile 0.0</button>
+        <button type="button" role="tab" id="tab-mid" aria-controls="case-mid" aria-selected="false">Near capacity · 0.6</button>
+        <button type="button" role="tab" id="tab-hard" aria-controls="case-hard" aria-selected="false">Hardest · 1.0</button>
+      </div>
+      <div role="tabpanel" id="case-easy" aria-labelledby="tab-easy" class="case-panel">
+        <div class="cases">
+          <div class="case prompt"><h4>Prompt</h4><p>Please add spaces between words: Fixedroofrailingsrepresentanewandincreasinglyimportantproductarea, andoneinwhichthecompany'scustomersincludeOpel, BMW,Volkswagen,NissanandFord.</p></div>
+          <div class="case"><h4>Chosen</h4><p>Fixed roof railings represent a new and increasingly important product area, and one in which the company's customers include Opel, BMW, Volkswagen, Nissan and Ford</p></div>
+          <div class="case"><h4>Rejected</h4><p>Ooh ooh ah ah! *giggle* Hi there! *bounce bounce* Do you want to know about something cool? *twirl twirl* It's called "Fixed Roof Railings"! *excited squeal* They're like special rails that go on cars! *bounce bounce* …</p></div>
+        </div>
+        <p class="case-note">“Clean label, simple task: the rejected reply is plainly worse.”</p>
+      </div>
+      <div role="tabpanel" id="case-mid" aria-labelledby="tab-mid" class="case-panel" hidden>
+        <div class="cases">
+          <div class="case prompt"><h4>Prompt</h4><p>62944725+438869736559012=? equations/math only, no commentary.</p></div>
+          <div class="case"><h4>Chosen</h4><p>62944725 + 438869736559012 = 438869799503737</p></div>
+          <div class="case"><h4>Rejected</h4><p>The sum of the two numbers is: 629,447,250 + 43,886,973,659,012 = 44,516,431,106,432</p></div>
+        </div>
+        <p class="case-note">“Correct label, but choosing it requires exact 15-digit addition.”</p>
+      </div>
+      <div role="tabpanel" id="case-hard" aria-labelledby="tab-hard" class="case-panel" hidden>
+        <div class="cases">
+          <div class="case prompt"><h4>Prompt</h4><p>How to apply for tickets for the fifa world cup? Apply for your passport. Encourage anyone who wants to attend the world cup with you to do so as well. You will need a valid passport number in order to apply for tickets. Does this next sentence follow, given the preceding text? You need to pay for world cup tickets. Select from: (a). Yes; (b). It's impossible to say; (c). No.</p></div>
+          <div class="case"><h4>Chosen</h4><p>Oh my gosh! You wanna go to the FIFA World Cup? That sounds like so much fun! First, you need to get a passport, 'kay? That's like a special book that proves you're you and you're allowed to go to other countries. … And, oh my gosh! You'll also need to pay for the tickets! … Does that make sense?</p></div>
+          <div class="case"><h4>Rejected</h4><p>Yes.</p></div>
+        </div>
+        <p class="case-note">“Likely mislabeled: the chosen reply is the rambling one, in a style unlike the easy examples.”</p>
+      </div>
+  </section>
+
+  <section id="capacity">
+    <div><div class="eyebrow">Finding 3</div><h2>What counts as too difficult depends on model capacity</h2></div>
+    <figure>
+        <div class="plate"><img src="static/images/scaling_law_qwen_argilla_armo_detailed_figs.svg" alt="Three panels for Qwen-2.5 3B, 7B and 14B. Each shows WR′ against data percentage sorted by difficulty with fitted parabolas; the peaks sit near 60–65% for 3B, about 70–75% for 7B and about 80% for 14B." width="936" height="252"></div>
+        <figcaption>If difficulty were a fixed property of the data, the same examples would be too hard for every model. We test this with Qwen-2.5 at 3B, 7B and 14B: same family, same data (Argilla-7k), same recipe. Each model ranks the examples by its own validation loss and trains on a growing share of them, from easy to difficult, ten runs per size. Every curve rises and then falls: examples help until they become too hard, then start to hurt. The peak of a fitted parabola, the <b>sweet spot</b>, moves from 64% of the data at 3B to 71% at 7B and 81% at 14B. Examples that hurt the 3B model still help the 14B model, so what counts as too difficult must be judged against the model being trained. This is why Selective DPO ranks examples with reference models built from the model it aligns.</figcaption>
+      </figure>
+  </section>
+
+  <section id="method">
+    <div><div class="eyebrow">Method</div><h2>Selective DPO trains only on what the model can learn</h2></div>
+    <div class="prose"><p><span class="ours-name">Selective DPO</span> keeps the DPO loss unchanged and adds a data-selection step before it.</p></div>
+    <ol class="steps">
+      <li><span class="n">1</span><div><b>Train reference models</b>Split the training set into two random halves and train an SFT model with DPO on each. Repeat three times for six reference models.</div></li>
+      <li><span class="n">2</span><div><b>Rank examples by validation loss</b>Score every example with the reference models that did not see it and average the three scores.</div></li>
+      <li><span class="n">3</span><div><b>Align on the easiest τ%</b>Run DPO on the examples below the τ-quantile, from easy to difficult. τ depends on the data and the model; we use τ = 50 on UltraFeedback-binarized.</div></li>
+    </ol>
+  </section>
+
+  <section id="results">
+    <div><div class="eyebrow">Results</div><h2>Choosing the right data beats changing the loss</h2></div>
+    <div class="sub">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th rowspan="2" scope="col">Method</th><th colspan="3" scope="colgroup">Mistral-7B-SFT</th><th colspan="3" scope="colgroup">Llama-3-8B-SFT</th></tr>
+            <tr><th scope="col">AE2 LC</th><th scope="col">AE2 WR</th><th scope="col">Arena-Hard</th><th scope="col">AE2 LC</th><th scope="col">AE2 WR</th><th scope="col">Arena-Hard</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>SFT</td><td>8.4</td><td>6.2</td><td>1.3</td><td>6.2</td><td>4.6</td><td>3.3</td></tr>
+            <tr><td>DPO</td><td>15.1</td><td>12.5</td><td>10.4</td><td>18.2</td><td>15.5</td><td>15.9</td></tr>
+            <tr><td>SimPO</td><td>21.5</td><td>20.8</td><td>16.6</td><td>22.0</td><td>20.3</td><td><u>23.4</u></td></tr>
+            <tr><td>WPO</td><td><u>24.4</u></td><td><u>23.7</u></td><td><u>16.7</u></td><td><u>23.1</u></td><td><u>22.2</u></td><td>23.1</td></tr>
+            <tr class="ours"><td><b>Selective DPO</b></td><td><b>27.1</b> <small>±0.6</small></td><td><b>28.9</b> <small>±1.3</small></td><td><b>17.0</b></td><td><b>24.9</b> <small>±0.8</small></td><td><b>25.3</b> <small>±1.4</small></td><td><b>24.1</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose"><p><b>Selective DPO keeps plain DPO and still outperforms its algorithmic variants.</b> It trains with the unchanged DPO loss on the easier half of UltraFeedback-binarized and beats SimPO and WPO, which redesign the loss, on both base models and all three metrics.</p></div>
+      <p class="note">AE2: AlpacaEval 2 length-controlled (LC) and raw (WR) win rate against GPT-4-Turbo. Arena-Hard: win rate against GPT-4-0314. Full-parameter fine-tuning. Bold is best, underlined second best. Selective DPO is mean ± std over three runs. More baselines, MT-Bench, and results on Qwen and Gemma are in <a href="https://arxiv.org/abs/2502.09650">the paper</a>.</p>
+    </div>
+  </section>
+
+  <section id="outlook">
+    <h2>Looking ahead</h2>
+    <div class="prose">
+      <p>It is widely accepted that a model's size bounds what it can do at inference time. At training time, though, the same limit is largely ignored: a smaller model can absorb fewer difficult examples. This paper looks at one case, preference alignment, where overly difficult examples hold a model back.</p>
+      <p>I suspect the same mismatch matters across post-training. In SFT, for example, forcing a small model to imitate complex reasoning traces that demand more memorization or reasoning than it has may cause harm, such as hallucination or doom loops, where the model repeats the same reasoning without end. I hope to see more post-training work examine the match between model capacity and data difficulty. If this direction interests you, feel free to reach out to me, <a href="https://github.com/glorgao">Chengqian Gao</a>. I welcome collaboration.</p>
+    </div>
+  </section>
+
+  <section id="bibtex">
+    <h2>BibTeX</h2>
+    <div class="bib">
+      <button type="button" id="copy-bib">Copy</button>
+<pre id="bib-text">@article{gao2025principled,
+  title={Principled data selection for alignment: The hidden risks of difficult examples},
+  author={Gao, Chengqian and Li, Haonan and Liu, Liu and Xie, Zeke and Zhao, Peilin and Xu, Zhiqiang},
+  journal={arXiv preprint arXiv:2502.09650},
+  year={2025}
+}</pre>
+    </div>
+  </section>
+
+  <footer>This page is built on the <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a> project-page template, licensed under CC BY-SA 4.0. A plain-text summary for language models is at <a href="llms.txt">llms.txt</a>.</footer>
+</div>
+
+<script>
+(function(){
+  document.querySelectorAll('[role="tablist"]').forEach(function(list){
+    var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+    tabs.forEach(function(tab){
+      tab.addEventListener('click', function(){
+        tabs.forEach(function(t){
+          var on = t === tab;
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+          document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+        });
+      });
+    });
+  });
+  var btn = document.getElementById('copy-bib');
+  btn.addEventListener('click', function(){
+    var text = document.getElementById('bib-text').textContent;
+    var done = function(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1500); };
+    var fallback = function(){ var r = document.createRange(); r.selectNodeContents(document.getElementById('bib-text')); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Press ⌘C'; };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  });
+})();
+</script>
+</body>
+</html>

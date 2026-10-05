@@ -1,0 +1,54 @@
+# Selective DPO: Principled Data Selection for Alignment
+
+> ICML 2025. Chengqian Gao, Haonan Li, Liu Liu, Zeke Xie, Peilin Zhao, Zhiqiang Xu (MBZUAI, Tencent, HKUST (Guangzhou), SJTU).
+> Overly difficult preference examples hurt DPO alignment because they exceed the model's capacity. Filtering them out (Selective DPO) raises AlpacaEval 2 win rate by 9–16 points over DPO.
+
+- Paper: https://arxiv.org/abs/2502.09650
+- Code: https://github.com/glorgao/SelectiveDPO
+- Models: https://huggingface.co/collections/glorgao/selectivedpo
+
+## Motivation
+
+Small models fail on hard problems at inference time. This work asks whether hard examples also hurt them at training time, in preference alignment with DPO.
+
+## Principle
+
+"Preference data vary in difficulty, and overly difficult examples hinder alignment, by exceeding the model's capacity."
+
+## Findings
+
+1. Preference examples vary in difficulty. The learned step of an example (first DPO step after which the implicit reward margin stays above 0.4) is consistent across 40 runs (4 models x 10 data subsets) on 300 UltraFeedback-binarized test examples. Validation loss (DPO loss of a held-out example under reference models trained on the other half of the data) is a cheap proxy: Spearman correlation with learned step is 0.92–0.93 for all four models.
+2. Overly difficult examples hinder alignment. For Mistral-7B, Qwen-2.5-7B, Llama-3-8B and Gemma-2-9B SFT models on UltraFeedback-binarized and Argilla-dpo-mix-7k, training on easy examples (lowest validation loss) beats standard DPO on all data. Training easy-to-difficult, win rate peaks at about half the data, 9.4 points above DPO on the full set. The gain comes from excluding hard examples, not from ordering. Examples near the model's capacity have correct labels but need skills such as exact arithmetic or translation; the hardest ones include likely mislabels and a style shift.
+3. Difficulty is relative to capacity. For Qwen-2.5 on Argilla-7k, the optimal share of easy-first data (sweet spot) rises from 64% at 3B to 71% at 7B and 81% at 14B (each model ranks examples by its own validation loss). Examples that hurt the 3B model still help the 14B model.
+
+## Method: Selective DPO
+
+1. Split the training data into random halves; train a reference model with DPO on each half; repeat three times (six reference models).
+2. Score each example by its validation loss under the reference models that did not see it; average.
+3. Run standard DPO on the easiest tau% of examples, ordered easy to difficult (tau = 50 on UltraFeedback-binarized).
+
+## Key results (UltraFeedback-binarized, full fine-tuning)
+
+| Method | Mistral-7B AE2 LC | AE2 WR | Arena-Hard | Llama-3-8B AE2 LC | AE2 WR | Arena-Hard |
+|---|---|---|---|---|---|---|
+| SFT | 8.4 | 6.2 | 1.3 | 6.2 | 4.6 | 3.3 |
+| DPO | 15.1 | 12.5 | 10.4 | 18.2 | 15.5 | 15.9 |
+| SimPO | 21.5 | 20.8 | 16.6 | 22.0 | 20.3 | 23.4 |
+| WPO | 24.4 | 23.7 | 16.7 | 23.1 | 22.2 | 23.1 |
+| Selective DPO | 27.1 | 28.9 | 17.0 | 24.9 | 25.3 | 24.1 |
+
+AE2 = AlpacaEval 2 win rate vs. GPT-4-Turbo (LC = length-controlled). Arena-Hard = win rate vs. GPT-4-0314.
+
+
+## Looking ahead
+
+Model size is accepted as a limit at inference time but mostly ignored at training time, where a smaller model can absorb fewer difficult examples. This paper studies preference alignment. The same capacity-difficulty mismatch may matter elsewhere in post-training, e.g. SFT on complex reasoning traces that exceed a small model's memorization or reasoning capacity, possibly causing hallucination or doom loops. The first author, Chengqian Gao (https://github.com/glorgao), welcomes collaboration.
+
+## Citation
+
+@article{gao2025principled,
+  title={Principled data selection for alignment: The hidden risks of difficult examples},
+  author={Gao, Chengqian and Li, Haonan and Liu, Liu and Xie, Zeke and Zhao, Peilin and Xu, Zhiqiang},
+  journal={arXiv preprint arXiv:2502.09650},
+  year={2025}
+}
